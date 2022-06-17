@@ -1,18 +1,20 @@
-# Snake Tutorial Python, Tech with Tim
 import random
 import pygame
 import tkinter as tk
 from tkinter import messagebox
+import os
 
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
 GREY = (200, 200, 200)
+RED = (255, 0, 0)
+GREEN = (0, 255, 0)
 
 class cube(object):
     rows = 20
     w = 500
 
-    def __init__(self, start, dirnx=1, dirny=0, color=(225, 0, 0)):
+    def __init__(self, start, dirnx=1, dirny=0, color=RED):
         self.pos = start
         self.dirnx = 1
         self.dirny = 0
@@ -60,22 +62,22 @@ class snake(object):
             keys = pygame.key.get_pressed()
 
             for key in keys:
-                if keys[pygame.K_LEFT]:
+                if keys[pygame.K_LEFT] or keys[pygame.K_a]:
                     self.dirnx = -1
                     self.dirny = 0
                     self.turns[self.head.pos[:]] = [self.dirnx, self.dirny]
 
-                elif keys[pygame.K_RIGHT]:
+                elif keys[pygame.K_RIGHT] or keys[pygame.K_d]:
                     self.dirnx = 1
                     self.dirny = 0
                     self.turns[self.head.pos[:]] = [self.dirnx, self.dirny]
 
-                elif keys[pygame.K_UP]:
+                elif keys[pygame.K_UP] or keys[pygame.K_w]:
                     self.dirnx = 0
                     self.dirny = -1
                     self.turns[self.head.pos[:]] = [self.dirnx, self.dirny]
 
-                elif keys[pygame.K_DOWN]:
+                elif keys[pygame.K_DOWN] or keys[pygame.K_s]:
                     self.dirnx = 0
                     self.dirny = 1
                     self.turns[self.head.pos[:]] = [self.dirnx, self.dirny]
@@ -87,12 +89,31 @@ class snake(object):
                 c.move(turn[0], turn[1])
                 if i == len(self.body) - 1:
                     self.turns.pop(p)
-            else: # movement at edge of screen
-                if c.dirnx == -1 and c.pos[0] <= 0: c.pos = (c.rows - 1, c.pos[1])
-                elif c.dirnx == 1 and c.pos[0] >= c.rows - 1: c.pos = (0, c.pos[1])
-                elif c.dirny == 1 and c.pos[1] >= c.rows - 1: c.pos = (c.pos[0], 0)
-                elif c.dirny == -1 and c.pos[1] <= 0: c.pos = (c.pos[0], c.rows - 1)
-                else: c.move(c.dirnx, c.dirny)
+            else: # at edge of screen
+                if c.dirnx == -1 and (c.pos[0] <= 0):
+                    s.gameOver()
+                elif c.dirny == -1 and (c.pos[1] <= 0):
+                    s.gameOver()
+                elif c.dirnx == 1 and (c.pos[0] >= c.rows - 1):
+                    s.gameOver()
+                elif c.dirny == 1 and (c.pos[1] >= c.rows - 1):
+                    s.gameOver()
+                else:
+                    c.move(c.dirnx, c.dirny)
+
+    
+    def gameOver(self):
+        score = len(s.body)
+        update_score(score)
+        print('Score:', score)
+        message_box('Game Over!', 'High Score: ' + str(max_score()) + '\nScore: ' + str(score) + '\nPlay again...')
+        s.reset((10, 10))
+
+
+    def checkCollision(self):
+        for x in range(len(s.body)):
+            if s.body[x].pos in list(map(lambda z:z.pos, s.body[x + 1:])):
+                s.gameOver()
 
 
     def reset(self, pos):
@@ -166,7 +187,7 @@ def randomSnack(rows, item):
 
 def message_box(subject, content):
     root = tk.Tk()
-    root.attributes("-topmost", True)
+    root.attributes('-topmost', True)
     root.withdraw()
     messagebox.showinfo(subject, content)
     try:
@@ -175,34 +196,50 @@ def message_box(subject, content):
         pass
 
 
+def update_score(nscore):
+    if os.stat('scores.txt').st_size != 0:
+        with open('scores.txt', 'r') as f:
+            lines = f.readlines()
+            score = lines[0].strip()  # score = max.score()
+        with open('scores.txt', 'w') as f:
+            if nscore > int(score):
+                f.write(str(nscore))
+            else:
+                f.write(str(score))     
+
+
+def max_score():
+    with open('scores.txt', 'r') as f:
+        lines = f.readlines()
+        if os.stat('scores.txt').st_size != 0:
+            score = lines[0].strip()
+            return score
+
+
 def main():
     global width, rows, s, snack
     width = 500
     rows = 20
     win = pygame.display.set_mode((width, width))
-    pygame.display.set_caption("Snake")
-    s = snake((255, 0, 0), (10, 10))
-    snack = cube(randomSnack(rows, s), color=(0, 255, 0))
-    flag = True
+    pygame.display.set_caption('Snake')
+    s = snake(RED, (10, 10))
+    snack = cube(randomSnack(rows, s), color=GREEN)
+    run = True
 
     clock = pygame.time.Clock()
 
-    while flag:
+    while run:
         pygame.time.delay(50)
         clock.tick(10)
         s.move()
+
         if s.body[0].pos == snack.pos:
             s.addCube()
-            snack = cube(randomSnack(rows, s), color=(0, 255, 0))
+            snack = cube(randomSnack(rows, s), color=GREEN)
 
-        # check for collision with self
-        for x in range(len(s.body)):
-            if s.body[x].pos in list(map(lambda z:z.pos, s.body[x + 1:])):
-                print('Score:', len(s.body))
-                message_box('You Lost!', 'Play again...')
-                s.reset((10, 10))
-                break
+        s.checkCollision()
 
         redrawWindow(win)
+
 
 main()
